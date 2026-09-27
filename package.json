@@ -1,6 +1,6 @@
 {
   "name": "ender-launcher",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "E-Launcher: the Minecraft launcher for EnderPhone",
   "main": "./out/main/index.js",
   "author": "EnderPhone",
@@ -83,7 +83,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "E-Launcher"
+      "shortcutName": "E-Launcher",
+      "artifactName": "Ender-Launcher-Setup-${version}.${ext}"
     },
     "portable": {
       "artifactName": "E-Launcher-Portable-${version}.exe"

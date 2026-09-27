@@ -57,7 +57,7 @@ jobs:
           body: |
             E-Launcher for Windows, built from `${{ github.sha }}` on `${{ github.ref_name }}`.
 
-            - **Ender Launcher Setup ${{ steps.version.outputs.version }}.exe**: installer (Start menu and desktop shortcut)
+            - **Ender-Launcher-Setup-${{ steps.version.outputs.version }}.exe**: installer (Start menu and desktop shortcut)
             - **E-Launcher-Portable-${{ steps.version.outputs.version }}.exe**: no install, just run it
 
             Not code-signed yet, so Windows SmartScreen may warn on first run: More info, then Run anyway.
