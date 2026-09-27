@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import { SkinViewer, IdleAnimation } from 'skinview3d'
 import { loadCapeFrames } from '../cape-art'
 
+/** Elytra wing thickness relative to skinview3d's (vanilla-inflated) box. */
+const ELYTRA_DEPTH = 0.5
+
 interface Props {
   skinUrl?: string
   model: 'classic' | 'slim'
@@ -41,6 +44,12 @@ export default function SkinViewer3D({ skinUrl, model, cape, elytra, width = 240
     })
     // Pull the camera back a little when there's a name tag, so the tag isn't cut off at the top.
     if (nameTag) viewer.zoom = 0.78
+    // skinview3d builds each elytra wing as vanilla's 10x20x2 box inflated by 1 all round (12x22x4),
+    // which reads chunky this close up. Half the depth: same texture, same outline, a thinner wing.
+    // (Scaled about the box's own centre, so it stays against the back.)
+    for (const wing of [viewer.playerObject.elytra.leftWing, viewer.playerObject.elytra.rightWing]) {
+      for (const mesh of wing.children) mesh.scale.z = ELYTRA_DEPTH
+    }
     // Slowly spins on its own; skinview3d suspends autoRotate while the player is dragging.
     viewer.autoRotate = true
     viewer.autoRotateSpeed = 0.6
