@@ -1,0 +1,67 @@
+# Builds E-Launcher for Windows on a real Windows runner (the installer needs Windows tooling that a
+# Linux box only fakes with Wine) and publishes the installer and the portable exe as a GitHub
+# release, so there's a plain download link. Runs on every push to master, or by hand from Actions.
+name: E-Launcher (Windows build)
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck and test
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Compile (main, preload, renderer into out/)
+        run: npm run build
+
+      - name: Build installer and portable exe
+        run: npx electron-builder --win nsis portable --x64 --publish never
+
+      - name: Keep the build as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: E-Launcher-windows
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: Read the version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish as a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: e-launcher-v${{ steps.version.outputs.version }}-build${{ github.run_number }}
+          name: E-Launcher ${{ steps.version.outputs.version }} (build ${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: |
+            E-Launcher for Windows, built from `${{ github.sha }}` on `${{ github.ref_name }}`.
+
+            - **Ender Launcher Setup ${{ steps.version.outputs.version }}.exe**: installer (Start menu and desktop shortcut)
+            - **E-Launcher-Portable-${{ steps.version.outputs.version }}.exe**: no install, just run it
+
+            Not code-signed yet, so Windows SmartScreen may warn on first run: More info, then Run anyway.
+          files: |
+            release/*.exe
+            release/latest.yml
+            release/*.blockmap

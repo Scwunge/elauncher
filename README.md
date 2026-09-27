@@ -58,7 +58,7 @@ npm run dev          # electron-vite dev, hot reload
 npm run typecheck
 npm run lint
 npm test             # node --test: EnderPhone install rules, Quick Play, chat logic, the realtime socket
-ENDERPHONE_API_DIR=../api npm run test:integration
+ENDERPHONE_API_DIR=../enderphone-api npm run test:integration
                      # EnderChat end to end against a real local enderphone-api + a fake Mojang,
                      # including the page's c=/dm=/t= links in Chromium (needs playwright)
 npm run build        # main + preload + renderer to out/
@@ -96,4 +96,6 @@ Set `ENDERPHONE_API_BASE` (see `.env.example`) to point a dev build at a local `
   handshake still need a run on a desktop.
 
 To wire it all up on a desktop (API deploy, capes, first real run), see
-`handoff/2026-09-27-e-launcher.md` in the umbrella repo.
+`handoff/2026-09-27-e-launcher.md`. It was written while the launcher lived at `launcher/` inside the
+`enderphone` umbrella repo: paths there starting `launcher/` are now at this repo's root, and the
+Windows build workflow is `.github/workflows/build.yml` (it builds on pushes to `master`).
