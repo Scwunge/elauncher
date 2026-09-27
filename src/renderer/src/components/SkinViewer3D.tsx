@@ -1,16 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { SkinViewer, IdleAnimation } from 'skinview3d'
+import { loadCapeFrames } from '../cape-art'
 
 interface Props {
   skinUrl?: string
   model: 'classic' | 'slim'
-  /** An EnderPhone cape (PNG, or the first frame of a GIF) - the same texture other players see. */
-  capeUrl?: string
+  /**
+   * An EnderPhone cape: its URL, or a picked file. It's a picture, not a cape texture, so it goes
+   * through the mod's own fitting (cape-art.ts) - the preview is what other players see in game.
+   */
+  cape?: string | Blob
   /** Show the cape as an elytra instead. */
   elytra?: boolean
   width?: number
   height?: number
   nameTag?: string
+  /** Told when a cape can't be shown (unreadable file, download failed), with why. */
+  onCapeError?: (message: string | undefined) => void
 }
 
 /**
@@ -18,9 +24,11 @@ interface Props {
  * kept across re-renders; only the textures reload when their inputs change, so dragging to rotate
  * isn't reset by anything else on the page.
  */
-export default function SkinViewer3D({ skinUrl, model, capeUrl, elytra, width = 240, height = 300, nameTag }: Props) {
+export default function SkinViewer3D({ skinUrl, model, cape, elytra, width = 240, height = 300, nameTag, onCapeError }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewerRef = useRef<SkinViewer>()
+  const elytraRef = useRef(elytra)
+  elytraRef.current = elytra
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -57,15 +65,61 @@ export default function SkinViewer3D({ skinUrl, model, capeUrl, elytra, width = 
     }
   }, [skinUrl, model])
 
+  // The cape: built into a texture (every frame of a GIF), then played if animated.
   useEffect(() => {
     const viewer = viewerRef.current
     if (!viewer) return
-    if (capeUrl) {
-      viewer.loadCape(capeUrl, { backEquipment: elytra ? 'elytra' : 'cape' }).catch(() => viewer.loadCape(null))
-    } else {
+    if (!cape) {
       viewer.loadCape(null)
+      onCapeError?.(undefined)
+      return
     }
-  }, [capeUrl, elytra])
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    loadCapeFrames(cape)
+      .then((frames) => {
+        if (cancelled || !frames.length) return
+        onCapeError?.(undefined)
+        viewer.loadCape(frames[0]!.canvas, { backEquipment: elytraRef.current ? 'elytra' : 'cape' })
+        // A cape is worn on the back: turn round to show it, then carry on spinning from there.
+        viewer.resetCameraPose()
+        viewer.playerObject.rotation.y = Math.PI
+        if (frames.length < 2) return
+        // Later frames are drawn into the texture the first one created, rather than a new
+        // texture per frame.
+        let i = 0
+        const tick = () => {
+          if (cancelled) return
+          i = (i + 1) % frames.length
+          const ctx = viewer.capeCanvas.getContext('2d')
+          if (ctx) {
+            ctx.clearRect(0, 0, viewer.capeCanvas.width, viewer.capeCanvas.height)
+            ctx.drawImage(frames[i]!.canvas, 0, 0)
+            const map = viewer.playerObject.cape.map
+            if (map) map.needsUpdate = true
+          }
+          timer = setTimeout(tick, frames[i]!.delayMs)
+        }
+        timer = setTimeout(tick, frames[0]!.delayMs)
+      })
+      .catch((err: Error) => {
+        if (cancelled) return
+        viewer.loadCape(null)
+        onCapeError?.(`Couldn't show that cape (${err.message}).`)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+    // onCapeError is a callback prop; the cape itself is what reloads this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cape])
+
+  // Cape or elytra: the same texture, worn differently.
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (viewer && viewer.playerObject.backEquipment) viewer.playerObject.backEquipment = elytra ? 'elytra' : 'cape'
+  }, [elytra])
 
   return <canvas ref={canvasRef} className="skin-viewer-canvas" />
 }

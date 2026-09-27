@@ -37,7 +37,8 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
 
   const [cape, setCape] = useState<CapeInfo>()
   const [capeError, setCapeError] = useState<string>()
-  const [capePreview, setCapePreview] = useState<string>()
+  const [capePreview, setCapePreview] = useState<Blob>()
+  const [capeShowError, setCapeShowError] = useState<string>()
   const [capeBase64, setCapeBase64] = useState<string>()
   const [capeBusy, setCapeBusy] = useState(false)
   const [capeMsg, setCapeMsg] = useState<{ text: string; bad?: boolean }>()
@@ -83,7 +84,7 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
       return
     }
     const dataUrl = await readAsDataUrl(file)
-    setCapePreview(dataUrl)
+    setCapePreview(file)
     setCapeBase64(dataUrl.split(',')[1])
     setShowCape(true)
   }
@@ -142,13 +143,15 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
         <SkinViewer3D
           skinUrl={skinPreview ?? profile.skinUrl}
           model={variant}
-          capeUrl={shownCape}
+          cape={shownCape}
           elytra={elytra}
+          onCapeError={setCapeShowError}
           width={320}
           height={440}
           nameTag={profile.name}
         />
         <p className="skin-viewer-hint">Drag to turn</p>
+        {capeShowError && <p className="error-text">{capeShowError}</p>}
         <div className="seg-row center">
           <button className={`seg${!elytra ? ' active' : ''}`} onClick={() => setElytra(false)}>
             Cape

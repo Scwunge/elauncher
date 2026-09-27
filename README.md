@@ -20,7 +20,7 @@ Terraria, the admin panel). The UI was rebuilt in EnderPhone's own look.
 | **EnderChat** | The EnderChat page (the Discord-style one) in its own tab, signed in with the launcher's session and kept loaded between tabs. Around it the launcher adds an unread badge, desktop notifications (quiet while Minecraft runs) and "message this friend" from the sidebar, which open the right chat in the page. |
 | **EnderNet pages** | Enderbook, Endportal, Sites, Hosting and Account, embedded and already signed in. |
 | **Friends and network** | Friends online (accept or decline requests) and relay status in the sidebar; players online, calls, voice rooms and the radio on Home. |
-| **Wardrobe** | Skin and your EnderPhone cape (PNG or animated GIF) on one 3D preview, with a cape/elytra toggle. |
+| **Wardrobe** | Skin and your EnderPhone cape (PNG or animated GIF) on one 3D preview, with a cape/elytra toggle. The cape picture is fitted exactly as the mod does it (`cape-art.ts`, a byte-for-byte port of enderphone-core's `CapeArt.java`, checked against Java-produced hashes), so the preview is what other players see. |
 | **Worlds and Logs** | Per instance: worlds with Play-into-world, and `latest.log` with warning/error filtering. |
 | **Themes** | The phone's six themes (End, Midnight, Nether, Grove, Deep, Rose), plus every colour and a background image. |
 
