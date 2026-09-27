@@ -18,7 +18,8 @@ import { getCachedSession, trySilentSignIn } from './auth.js'
 import { getEnderPhoneSession, setEnderPhoneSession } from './store.js'
 
 export const API_BASE = (process.env.ENDERPHONE_API_BASE || 'https://api.enderphone.cloud').replace(/\/+$/, '')
-const SESSION_SERVER = 'https://sessionserver.mojang.com'
+// Overridable only so the integration tests can stand in for Mojang (the API reads the same name).
+const SESSION_SERVER = (process.env.MOJANG_SESSION_SERVER || 'https://sessionserver.mojang.com').replace(/\/+$/, '')
 const USER_AGENT = 'E-Launcher/0.1 (+https://enderphone.cloud)'
 const FETCH_TIMEOUT_MS = 10_000
 /** The API's tokens last 12h; stop trusting ours an hour early rather than fail mid-request. */
@@ -126,8 +127,9 @@ export async function connect(password) {
   }
 }
 
-/** A token for an authed call, connecting silently if we can. Throws EnderPhoneAuthError if not. */
-async function token() {
+/** A token for an authed call, connecting silently if we can. Throws EnderPhoneAuthError if not.
+ *  Exported for the realtime socket (enderchat.js), which sends it once at the handshake. */
+export async function token() {
   const saved = getEnderPhoneSession()
   const mc = getCachedSession() ?? (await trySilentSignIn())
   if (sessionMatches(saved, mc)) return saved.token
@@ -190,4 +192,27 @@ export const api = {
   setCape: (bytes) =>
     authed('/v1/cape', { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: bytes }),
   clearCape: () => authed('/v1/cape', { method: 'DELETE' }),
+  block: (uuid) => post('/v1/blocks', { uuid }),
+  report: (uuid, reason) => post('/v1/reports', { playerUuid: uuid, reason }),
+
+  /* EnderChat - the same conversations the phone's Messages app and the EnderChat page use. */
+  conversations: () => authed('/v1/conversations'),
+  messages: (id, limit = 100) => authed(`/v1/conversations/${Number(id)}/messages?limit=${Number(limit)}`),
+  send: (id, body, photoId) => post(`/v1/conversations/${Number(id)}/messages`, { body, ...(photoId ? { photoId } : {}) }),
+  /** First message to someone you have no DM with yet - the API makes the DM as it delivers it. */
+  sendDirect: (uuid, body, photoId) => post(`/v1/messages/${encodeURIComponent(uuid)}`, { body, ...(photoId ? { photoId } : {}) }),
+  markRead: (id) => authed(`/v1/conversations/${Number(id)}/read`, { method: 'POST' }),
+  createGroup: (name, members) => post('/v1/conversations', { name, members }),
+  addMember: (id, username) => post(`/v1/conversations/${Number(id)}/members`, { username }),
+  removeMember: (id, uuid) =>
+    authed(`/v1/conversations/${Number(id)}/members/${encodeURIComponent(uuid)}`, { method: 'DELETE' }),
+  rename: (id, name) => post(`/v1/conversations/${Number(id)}/name`, { name }),
+  leave: (id) => authed(`/v1/conversations/${Number(id)}/leave`, { method: 'POST' }),
+  /** A PNG kept out of the public feed (share=false) - how a photo in a chat stays in that chat. */
+  uploadChatPhoto: (png) =>
+    authed('/v1/photos?share=false', { method: 'POST', headers: { 'content-type': 'image/png' }, body: png, timeoutMs: 60_000 }),
+}
+
+function post(path, body) {
+  return authed(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 }

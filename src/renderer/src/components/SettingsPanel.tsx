@@ -38,6 +38,8 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
   const [checking, setChecking] = useState(false)
   const [whileRunning, setWhileRunning] = useState(settings.whileRunning ?? 'minimize')
   const [defaultEdition, setDefaultEdition] = useState<Edition>(settings.defaultEdition ?? 'full')
+  const [appearOnline, setAppearOnline] = useState(settings.appearOnline !== false)
+  const [chatNotifications, setChatNotifications] = useState(settings.chatNotifications !== false)
   const { session, requestConnect, disconnect } = useEnderNet()
 
   useEffect(() => {
@@ -63,7 +65,9 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
   async function handleSave() {
     setSaving(true)
     try {
-      await onSave({ gameDirectory, minMemoryMb, maxMemoryMb, whileRunning, defaultEdition })
+      await onSave({ gameDirectory, minMemoryMb, maxMemoryMb, whileRunning, defaultEdition, appearOnline, chatNotifications })
+      // The live chat socket is what shows you online, so the setting takes effect right away.
+      if (appearOnline !== (settings.appearOnline !== false)) await window.api.chat.live(appearOnline && session.connected)
       onClose()
     } finally {
       setSaving(false)
@@ -128,6 +132,18 @@ export default function SettingsPanel({ settings, onSave, onClose }: Props) {
             </button>
           </div>
           <p className="field-hint">Each instance can still pick its own, in its EnderPhone tab.</p>
+        </div>
+
+        <div className="field">
+          <label>EnderChat</label>
+          <label className="check-row">
+            <input type="checkbox" checked={appearOnline} onChange={(e) => setAppearOnline(e.target.checked)} />
+            Appear online to friends while E-Launcher is open (messages arrive instantly)
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={chatNotifications} onChange={(e) => setChatNotifications(e.target.checked)} />
+            Desktop notifications for new messages (never while Minecraft is running - the phone has it)
+          </label>
         </div>
 
         <div className="field">

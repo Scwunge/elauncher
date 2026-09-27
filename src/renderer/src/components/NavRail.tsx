@@ -4,7 +4,7 @@ import type { Profile } from '../types'
 import Icon from './Icon'
 import SkinFace from './SkinFace'
 
-export type Tab = 'home' | 'library' | 'servers' | 'endernet' | 'discover' | 'wardrobe' | 'theme'
+export type Tab = 'home' | 'library' | 'chat' | 'servers' | 'endernet' | 'discover' | 'wardrobe' | 'theme'
 
 interface Props {
   tab: Tab
@@ -14,11 +14,13 @@ interface Props {
   onOpenConsole: () => void
   onSignOut: () => void
   notificationCount: number
+  chatUnread: number
 }
 
 export const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'library', label: 'Library', icon: 'library' },
+  { id: 'chat', label: 'EnderChat', icon: 'chat' },
   { id: 'servers', label: 'Servers', icon: 'portal' },
   { id: 'endernet', label: 'EnderNet', icon: 'phone' },
   { id: 'discover', label: 'Discover', icon: 'compass' },
@@ -30,7 +32,7 @@ export const NAV_ITEMS: { id: Tab; label: string; icon: string }[] = [
  * The left rail: pages up top, app chrome (console, settings, account) at the bottom. Labels show
  * as tooltips on hover, and under each icon - small, so a first-time player isn't guessing.
  */
-export default function NavRail({ tab, onTabChange, profile, onOpenSettings, onOpenConsole, onSignOut, notificationCount }: Props) {
+export default function NavRail({ tab, onTabChange, profile, onOpenSettings, onOpenConsole, onSignOut, notificationCount, chatUnread }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -51,6 +53,7 @@ export default function NavRail({ tab, onTabChange, profile, onOpenSettings, onO
               {item.id === 'endernet' && notificationCount > 0 && (
                 <span className="nav-badge">{notificationCount > 9 ? '9+' : notificationCount}</span>
               )}
+              {item.id === 'chat' && chatUnread > 0 && <span className="nav-badge">{chatUnread > 99 ? '99+' : chatUnread}</span>}
             </span>
             <span className="nav-rail-label">{item.label}</span>
           </button>

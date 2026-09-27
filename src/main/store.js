@@ -22,14 +22,20 @@ const schema = {
       whileRunning: { type: "string" },
       // The edition a NEW instance gets when EnderPhone is switched on for it. Per-instance choice
       // after that lives in instanceEnderPhone below.
-      defaultEdition: { type: "string" }
+      defaultEdition: { type: "string" },
+      // EnderChat: hold the live socket (which shows you online to friends, like the phone does)
+      // while the launcher is open, and pop a desktop notification for new messages.
+      appearOnline: { type: "boolean" },
+      chatNotifications: { type: "boolean" }
     },
     default: {
       gameDirectory: defaultGameDirectory,
       minMemoryMb: 2048,
       maxMemoryMb: 4096,
       whileRunning: "minimize",
-      defaultEdition: "full"
+      defaultEdition: "full",
+      appearOnline: true,
+      chatNotifications: true
     }
   },
   account: {

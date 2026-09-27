@@ -3,6 +3,7 @@ import * as installer from '@xmcl/installer'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { getCachedSession, signIn, signOut, trySilentSignIn, updateCachedSkinUrl } from './auth.js'
+import { registerChatHandlers, stopChat } from './chat-ipc.js'
 import { appendConsoleChunk, getConsoleBuffer, getConsoleInstanceRoot, reportLatestCrash, resetConsole } from './console-log.js'
 import { API_BASE, api, appPageUrl, connect as connectEnderNet, disconnect as disconnectEnderNet, sessionSummary } from './enderphone-api.js'
 import * as enderphone from './enderphone-mod.js'
@@ -56,6 +57,7 @@ let gameRunning = false;
 
 export function registerIpcHandlers(mainWindow) {
   const progress = (channel) => (event) => send(mainWindow, channel, event);
+  registerChatHandlers(mainWindow, { handle, isGameRunning: () => gameRunning });
 
   /* ---------------------------------------------------------------- Minecraft account */
 
@@ -73,6 +75,7 @@ export function registerIpcHandlers(mainWindow) {
   });
   electron.ipcMain.handle("auth:signOut", async () => {
     signOut();
+    stopChat();
     disconnectEnderNet();
   });
   electron.ipcMain.handle("account:changeSkin", async (_e, pngBase64, variant) => {
@@ -236,7 +239,10 @@ export function registerIpcHandlers(mainWindow) {
 
   electron.ipcMain.handle("endernet:session", () => sessionSummary());
   electron.ipcMain.handle("endernet:connect", (_e, password) => connectEnderNet(password));
-  electron.ipcMain.handle("endernet:disconnect", () => disconnectEnderNet());
+  electron.ipcMain.handle("endernet:disconnect", () => {
+    stopChat();
+    disconnectEnderNet();
+  });
   handle("endernet:status", () => api.status());
   handle("endernet:servers", (_e, query) => api.servers(query));
   handle("endernet:sites", () => api.sites());

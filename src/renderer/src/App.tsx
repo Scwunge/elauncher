@@ -7,6 +7,8 @@ import HomeTab from './components/HomeTab'
 import LibraryTab from './components/LibraryTab'
 import ServersTab from './components/ServersTab'
 import EnderNetTab from './components/EnderNetTab'
+import ChatTab from './components/ChatTab'
+import { ChatProvider, useChat } from './chat-state'
 import DiscoverTab from './components/DiscoverTab'
 import WardrobeTab from './components/WardrobeTab'
 import ThemeTab from './components/ThemeTab'
@@ -45,16 +47,18 @@ export default function App() {
 
   return (
     <EnderNetProvider>
-      <LaunchProvider>
-        <SignedIn
-          profile={auth.profile}
-          onProfileChange={(profile) => setAuth({ status: 'signed-in', profile })}
-          onSignOut={async () => {
-            await window.api.auth.signOut()
-            setAuth({ status: 'signed-out' })
-          }}
-        />
-      </LaunchProvider>
+      <ChatProvider>
+        <LaunchProvider>
+          <SignedIn
+            profile={auth.profile}
+            onProfileChange={(profile) => setAuth({ status: 'signed-in', profile })}
+            onSignOut={async () => {
+              await window.api.auth.signOut()
+              setAuth({ status: 'signed-out' })
+            }}
+          />
+        </LaunchProvider>
+      </ChatProvider>
     </EnderNetProvider>
   )
 }
@@ -72,8 +76,9 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [updateReady, setUpdateReady] = useState(false)
   const [openInstanceId, setOpenInstanceId] = useState<string>()
-  const [endernetPage, setEndernetPage] = useState('enderchat')
+  const [endernetPage, setEndernetPage] = useState('enderbook')
   const endernet = useEnderNet()
+  const chat = useChat()
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
@@ -86,11 +91,21 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
     setTab('library')
   }
   function openPage(page: string) {
+    // EnderChat is native now: every "open EnderChat" lands on its own tab, not the web page.
+    if (page === 'enderchat') return setTab('chat')
     setEndernetPage(page)
     setTab('endernet')
   }
+  function messagePlayer(uuid: string, name: string) {
+    chat.openDirect(uuid, name)
+    setTab('chat')
+  }
 
-  const wide = tab === 'endernet' || tab === 'wardrobe'
+  // A notification clicked while on another page brings you to that chat.
+  useEffect(() => window.api.chat.onOpen(() => setTab('chat')), [])
+
+  const wide = tab === 'endernet' || tab === 'wardrobe' || tab === 'chat'
+  const fullBleed = tab === 'endernet' || tab === 'chat'
 
   return (
     <div className="app">
@@ -105,6 +120,7 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
         onOpenConsole={() => setConsoleOpen(true)}
         onSignOut={onSignOut}
         notificationCount={endernet.unreadNotifications}
+        chatUnread={chat.totalUnread}
       />
 
       <div className="app-main">
@@ -120,6 +136,8 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
             />
           ) : tab === 'library' ? (
             <LibraryTab openId={openInstanceId} onOpenId={setOpenInstanceId} />
+          ) : tab === 'chat' ? (
+            <ChatTab />
           ) : tab === 'servers' ? (
             <ServersTab onOpenPage={openPage} />
           ) : tab === 'endernet' ? (
@@ -139,10 +157,10 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
           ) : null}
         </div>
 
-        {tab !== 'endernet' && <LaunchDock onOpenInstance={openInstance} onOpenConsole={() => setConsoleOpen(true)} />}
+        {!fullBleed && <LaunchDock onOpenInstance={openInstance} onOpenConsole={() => setConsoleOpen(true)} />}
       </div>
 
-      {!wide && <RightSidebar profile={profile} onOpenPage={openPage} />}
+      {!wide && <RightSidebar profile={profile} onOpenChat={() => setTab('chat')} onMessage={messagePlayer} />}
 
       {settingsOpen && settings && (
         <SettingsPanel

@@ -17,7 +17,8 @@ Terraria, the admin panel). The UI was rebuilt in EnderPhone's own look.
 | **New EnderPhone instance** | Pick a version EnderPhone is actually built for, a loader, an edition and extras (Sodium, Iris), and everything's downloaded in one go. |
 | **EnderNet account** | Signs in to the EnderPhone API the same way the phone does (Mojang `joinServer` handshake), including the EnderPhone password prompt for accounts that set one. The password is never stored. |
 | **Servers (Endportal)** | The server list with live counts, votes and ratings. **Join** launches an instance straight into the server with Quick Play. |
-| **EnderNet pages** | EnderChat, Enderbook, Endportal, Sites, Hosting and Account, embedded and already signed in. |
+| **EnderChat** | The phone's messaging, native in the launcher: DMs, groups and EnderCloud, live both ways over the API's realtime socket, so a message sent here shows on the phone in-game and vice versa. Photos (paste, drop, pick, or send a screenshot straight from any instance), phone clips played inline, unread badges, desktop notifications (quiet while Minecraft runs), group create/rename/add/remove/leave, report and block. |
+| **EnderNet pages** | Enderbook, Endportal, Sites, Hosting and Account, embedded and already signed in. |
 | **Friends and network** | Friends online (accept or decline requests) and relay status in the sidebar; players online, calls, voice rooms and the radio on Home. |
 | **Wardrobe** | Skin and your EnderPhone cape (PNG or animated GIF) on one 3D preview, with a cape/elytra toggle. |
 | **Worlds and Logs** | Per instance: worlds with Play-into-world, and `latest.log` with warning/error filtering. |
@@ -34,6 +35,19 @@ If the feed can't be reached, the last good copy is used. With no copy at all, t
 back to the website's own rule: the fixed file name for `KNOWN_VERSION` (in
 `src/main/enderphone-mod.js`), checked with a HEAD request. Bump `KNOWN_VERSION` with each release.
 
+## EnderChat
+
+Same data as the phone's Messages app and the EnderChat page: `/v1/conversations` and friends on the
+API, nothing new server-side. `src/main/enderchat.js` holds the realtime socket (`/v1/ws`, bearer
+token in the handshake, reconnect with backoff, ping/pong to catch a dead connection after sleep);
+`src/main/chat-ipc.js` is the IPC plus desktop notifications; the renderer side is
+`chat-state.tsx` (list, threads, optimistic sends, polling fallback), `chat-model.ts` (pure logic)
+and `components/ChatTab.tsx`.
+
+Holding the socket shows the player online to friends, as the phone does - so it's a setting
+("Appear online while E-Launcher is open"). With it off, chat still works by polling. Binary frames
+on that socket are call and voice media and are dropped; calls stay in-game.
+
 ## Development
 
 ```bash
@@ -41,7 +55,9 @@ npm install
 npm run dev          # electron-vite dev, hot reload
 npm run typecheck
 npm run lint
-npm test             # node --test: EnderPhone install rules against a local HTTP server, Quick Play
+npm test             # node --test: EnderPhone install rules, Quick Play, chat logic, the realtime socket
+ENDERPHONE_API_DIR=../api npm run test:integration
+                     # EnderChat end to end against a real local enderphone-api + a fake Mojang
 npm run build        # main + preload + renderer to out/
 npm run build:win    # + NSIS installer and portable exe
 npm run build:linux  # AppImage
@@ -55,6 +71,7 @@ Set `ENDERPHONE_API_BASE` (see `.env.example`) to point a dev build at a local `
 | Path | What |
 |---|---|
 | `src/main/enderphone-api.js` | EnderNet client: the sign-in handshake, the token, every API call |
+| `src/main/enderchat.js`, `chat-ipc.js` | EnderChat's live socket, IPC and notifications |
 | `src/main/enderphone-mod.js` | The release feed and EnderPhone install/update/remove in an instance |
 | `src/main/ipc.js` | Every IPC handler; `play:start` updates EnderPhone before launching |
 | `src/main/minecraft.js` | Game and loader install, launch, Quick Play arguments |
@@ -70,6 +87,6 @@ Set `ENDERPHONE_API_BASE` (see `.env.example`) to point a dev build at a local `
 - **Code signing.** Windows builds are unsigned, so SmartScreen warns on first run.
 - **A bundled JRE** (`resources/jre-win-x64`) for instant first launch. Optional: Java is downloaded
   on the first Play anyway.
-- **Tested outside Electron only.** Typecheck, lint, build and the unit tests pass, and every page
-  was screenshotted against a mocked backend. A real Microsoft sign-in, game launch and EnderNet
+- **Tested outside Electron only.** Typecheck, lint, build and the unit tests pass; EnderChat passes
+  end to end against a real local API; every page was screenshotted against a mocked backend. A real Microsoft sign-in, game launch and EnderNet
   handshake still need a run on a desktop.

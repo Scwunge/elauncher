@@ -11,7 +11,6 @@ interface Props {
 
 /** The phone's own pages, always listed. Anything else in the Sites directory is added below. */
 const CORE_PAGES: { page: string; label: string; icon: string; blurb: string }[] = [
-  { page: 'enderchat', label: 'EnderChat', icon: 'chat', blurb: 'DMs and groups' },
   { page: 'enderbook', label: 'Enderbook', icon: 'book', blurb: 'The social feed' },
   { page: 'endportal', label: 'Endportal', icon: 'portal', blurb: 'Vote and review servers' },
   { page: 'sites', label: 'Sites', icon: 'globe', blurb: 'The phone’s web directory' },
@@ -47,7 +46,8 @@ export default function EnderNetTab({ page, onPageChange }: Props) {
   useEffect(() => {
     window.api.endernet.sites().then((r) => {
       if (!r.ok) return
-      const known = new Set([...CORE_PAGES.map((p) => p.page), 'minebook'])
+      // EnderChat has its own tab (native, live), so it isn't listed here as a web page.
+      const known = new Set([...CORE_PAGES.map((p) => p.page), 'minebook', 'enderchat'])
       setExtra(r.data.sites.filter((s) => !known.has(s.slug)))
     })
   }, [])

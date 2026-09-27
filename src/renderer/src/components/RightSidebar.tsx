@@ -1,30 +1,23 @@
 import { useState } from 'react'
 import { useEnderNet } from '../state'
-import type { Friend, Profile } from '../types'
+import type { Profile } from '../types'
 import Icon from './Icon'
+import { PlayerFace } from './PlayerFace'
 import SkinFace from './SkinFace'
 
 interface Props {
   profile: Profile
-  onOpenPage: (page: string) => void
+  onOpenChat: () => void
+  onMessage: (uuid: string, name: string) => void
 }
 
 const REGION_NAMES: Record<string, string> = { uk: 'London', fr: 'Roubaix', na: 'Canada' }
-
-/** A friend's face: their EnderPhone avatar if they set one, else their Minecraft skin's face, else
- *  their initial (offline, or the face service is down). */
-function FriendFace({ friend }: { friend: Friend }) {
-  const [broken, setBroken] = useState(false)
-  if (broken) return <span className="friend-avatar initial">{friend.name.slice(0, 1).toUpperCase()}</span>
-  const src = friend.avatar ?? `https://mc-heads.net/avatar/${friend.uuid}/28`
-  return <img className={`friend-avatar${friend.avatar ? '' : ' pixel'}`} src={src} alt="" onError={() => setBroken(true)} />
-}
 
 /**
  * Always-on right column: who you're playing as, your EnderPhone friends (online first, requests on
  * top), and the network's live state - the relays that carry calls and proximity voice.
  */
-export default function RightSidebar({ profile, onOpenPage }: Props) {
+export default function RightSidebar({ profile, onOpenChat, onMessage }: Props) {
   const { session, requestConnect, friends, reloadFriends, network, networkDown } = useEnderNet()
   const [busy, setBusy] = useState<string>()
 
@@ -80,7 +73,7 @@ export default function RightSidebar({ profile, onOpenPage }: Props) {
               <div className="friend-requests">
                 {friends.incoming.map((f) => (
                   <div className="friend-row request" key={f.uuid}>
-                    <FriendFace friend={f} />
+                    <PlayerFace uuid={f.uuid} name={f.name} avatar={f.avatar} />
                     <div className="friend-name">
                       {f.name}
                       <span className="friend-sub">wants to be friends</span>
@@ -102,20 +95,23 @@ export default function RightSidebar({ profile, onOpenPage }: Props) {
             ) : (
               <div className="friend-list">
                 {sorted.map((f) => (
-                  <div className={`friend-row${f.online ? ' online' : ''}`} key={f.uuid}>
-                    <span className="friend-face-wrap">
-                      <FriendFace friend={f} />
-                      <span className={`presence ${f.online ? 'on' : 'off'}`} />
-                    </span>
+                  <button
+                    className={`friend-row clickable${f.online ? ' online' : ''}`}
+                    key={f.uuid}
+                    title={`Message ${f.name}`}
+                    onClick={() => onMessage(f.uuid, f.name)}
+                  >
+                    <PlayerFace uuid={f.uuid} name={f.name} avatar={f.avatar} online={f.online} />
                     <div className="friend-name">
                       {f.name}
                       <span className="friend-sub">{f.online ? 'Online' : 'Offline'}</span>
                     </div>
-                  </div>
+                    <Icon name="chat" size={15} className="friend-msg" />
+                  </button>
                 ))}
               </div>
             )}
-            <button className="secondary-button full" onClick={() => onOpenPage('enderchat')}>
+            <button className="secondary-button full" onClick={onOpenChat}>
               <Icon name="chat" size={16} /> Open EnderChat
             </button>
           </>
