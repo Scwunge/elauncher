@@ -271,12 +271,12 @@ describe('EnderChat against a real API', { skip: skip && 'set ENDERPHONE_API_DIR
       await waitFor(async () => (await head()) === accounts.bob.name, 5000, 'the DM with Bob')
     })
 
-    it('dm= with someone new starts the DM, like New message does', async () => {
+    it('dm= with someone new opens a draft DM, like New message does - nothing sent yet', async () => {
       const carol = await signInAs('carol')
       await page.evaluate((uuid) => (location.hash = `dm=${uuid}`), carol.uuid)
       await waitFor(async () => (await head()) === accounts.carol.name, 8000, 'the new DM with Carol')
       const theirs = await (await fetch(`${apiBase}/v1/conversations`, { headers: { authorization: `Bearer ${carol.token}` } })).json()
-      assert.ok(theirs.conversations.some((c) => c.kind === 'dm' && c.lastBody === '👋'), 'Carol got the wave')
+      assert.ok(!theirs.conversations.some((c) => c.kind === 'dm'), 'nothing reaches Carol until something is said')
     })
 
     it('recovers from an expired session when handed a fresh token', async () => {
