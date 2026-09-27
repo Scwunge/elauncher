@@ -1,0 +1,98 @@
+{
+  "name": "ender-launcher",
+  "version": "0.1.0",
+  "description": "E-Launcher: the Minecraft launcher for EnderPhone",
+  "main": "./out/main/index.js",
+  "author": "EnderPhone",
+  "homepage": "https://enderphone.cloud",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "build:win": "npm run build && electron-builder --win",
+    "build:portable": "npm run build && electron-builder --win portable",
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:mac": "npm run build && electron-builder --mac",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "oxlint .",
+    "test": "node --test --experimental-test-module-mocks test/*.test.mjs"
+  },
+  "dependencies": {
+    "@xmcl/core": "2.13.0",
+    "@xmcl/installer": "5.4.0",
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.3.9",
+    "msmc": "^5.0.5",
+    "skinview3d": "^3.4.2",
+    "tar": "^7.4.3",
+    "three": "0.156.1",
+    "yauzl": "^3.1.3"
+  },
+  "devDependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/sora": "^5.3.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/yauzl": "^2.10.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^44.3.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "oxlint": "^0.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "cloud.enderphone.launcher",
+    "productName": "Ender Launcher",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Game"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.games"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "E-Launcher"
+    },
+    "portable": {
+      "artifactName": "E-Launcher-Portable-${version}.exe"
+    },
+    "asar": true,
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://enderphone.cloud/launcher",
+        "channel": "latest"
+      }
+    ]
+  }
+}
