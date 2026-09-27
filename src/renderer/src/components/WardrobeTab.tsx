@@ -38,6 +38,9 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
   const [cape, setCape] = useState<CapeInfo>()
   const [capeError, setCapeError] = useState<string>()
   const [capePreview, setCapePreview] = useState<Blob>()
+  // The saved cape's picture, as bytes from the main process - never fetched by this page, because
+  // the live CDN sends no CORS header (see src/main/cape-download.js).
+  const [capeSaved, setCapeSaved] = useState<Blob>()
   const [capeShowError, setCapeShowError] = useState<string>()
   const [capeBase64, setCapeBase64] = useState<string>()
   const [capeBusy, setCapeBusy] = useState(false)
@@ -56,6 +59,29 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
   useEffect(() => {
     if (session.connected) void loadCape()
   }, [session.connected])
+
+  useEffect(() => {
+    const url = cape?.cape
+    if (!url) {
+      setCapeSaved(undefined)
+      return
+    }
+    let cancelled = false
+    void window.api.endernet.capeImage(url).then((r) => {
+      if (cancelled) return
+      if (r.ok) {
+        const bytes = Uint8Array.from(atob(r.data.base64), (c) => c.charCodeAt(0))
+        setCapeSaved(new Blob([bytes], { type: r.data.type }))
+        setCapeShowError(undefined)
+      } else {
+        setCapeSaved(undefined)
+        setCapeShowError(`Couldn't show your cape (${r.error}).`)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [cape?.cape])
 
   async function pickSkin(file: File) {
     setSkinMsg(undefined)
@@ -134,7 +160,7 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
     )
   }
 
-  const shownCape = showCape ? capePreview ?? cape?.cape ?? undefined : undefined
+  const shownCape = showCape ? capePreview ?? capeSaved ?? undefined : undefined
 
   return (
     <div className="wardrobe">

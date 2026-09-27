@@ -441,6 +441,8 @@ export interface LauncherApi {
     searchPlayers: (q: string) => Promise<Result<{ players: { uuid: string; name: string; online: boolean }[] }>>
     cape: () => Promise<Result<CapeInfo>>
     setCape: (base64: string) => Promise<Result<{ cape: string }>>
+    /** The cape picture's bytes, fetched by the main process (the CDN sends no CORS header). */
+    capeImage: (url: string) => Promise<Result<{ base64: string; type: string }>>
     clearCape: () => Promise<Result<unknown>>
     pageUrl: (page: string) => Promise<Result<string>>
   }

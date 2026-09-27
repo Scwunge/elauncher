@@ -16,6 +16,7 @@
  */
 import { getCachedSession, trySilentSignIn } from './auth.js'
 import { getEnderPhoneSession, setEnderPhoneSession } from './store.js'
+import { downloadCape } from './cape-download.js'
 
 export const API_BASE = (process.env.ENDERPHONE_API_BASE || 'https://api.enderphone.cloud').replace(/\/+$/, '')
 // Overridable only so the integration tests can stand in for Mojang (the API reads the same name).
@@ -192,6 +193,8 @@ export const api = {
   setCape: (bytes) =>
     authed('/v1/cape', { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: bytes }),
   clearCape: () => authed('/v1/cape', { method: 'DELETE' }),
+  /** The cape picture itself, fetched here rather than in the page - see cape-download.js. */
+  capeImage: (url) => downloadCape(url, API_BASE),
 
   /* EnderChat: the conversation list, for the unread badge and naming notifications. */
   conversations: () => authed('/v1/conversations'),

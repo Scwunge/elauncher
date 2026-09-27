@@ -257,6 +257,7 @@ export function registerIpcHandlers(mainWindow) {
   handle("endernet:cape", () => api.cape());
   handle("endernet:setCape", (_e, base64) => api.setCape(Buffer.from(base64, "base64")));
   handle("endernet:clearCape", () => api.clearCape());
+  handle("endernet:capeImage", (_e, url) => api.capeImage(url));
   handle("endernet:pageUrl", (_e, page) => appPageUrl(page));
   electron.ipcMain.handle("app:getApiBase", () => API_BASE);
 

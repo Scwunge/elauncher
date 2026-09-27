@@ -65,6 +65,7 @@ const api = {
     cape: () => invoke("endernet:cape"),
     setCape: (base64) => invoke("endernet:setCape", base64),
     clearCape: () => invoke("endernet:clearCape"),
+    capeImage: (url) => invoke("endernet:capeImage", url),
     pageUrl: (page) => invoke("endernet:pageUrl", page)
   },
   /** EnderChat around the page: the live socket, the conversation list, notification clicks. */
