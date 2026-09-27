@@ -1,13 +1,16 @@
 /**
  * EnderChat end to end: the launcher's own EnderNet client and live socket against a real
  * enderphone-api running locally, with a stand-in for Mojang's session server (the API reads
- * MOJANG_SESSION_SERVER, and so does the launcher) so the real sign-in handshake runs too.
+ * MOJANG_SESSION_SERVER, and so does the launcher) so the real sign-in handshake runs too - and
+ * the EnderChat page itself, in Chromium, opened the way the launcher's tab opens it.
  *
  * Alice is the launcher. Bob is "the phone": raw HTTP + WebSocket with his own token, the way the
- * mod talks to the API. Every message crosses between the two for real.
+ * mod talks to the API.
  *
  * Run: ENDERPHONE_API_DIR=/path/to/enderphone-api npm run test:integration
- * (skipped when that isn't set - it needs the API checked out, with `npm ci` run in it).
+ * (skipped when that isn't set - it needs the API checked out, with `npm ci` run in it). The page
+ * checks also need Playwright's Chromium (CHROMIUM_PATH, or a `playwright` install); without it
+ * they're skipped and the rest still runs.
  */
 import { after, before, describe, it, mock } from 'node:test'
 import assert from 'node:assert/strict'
@@ -28,6 +31,15 @@ const joined = new Map() // serverId -> { id, name }
 const accounts = {
   alice: { id: crypto.randomUUID().replace(/-/g, ''), name: 'AliceE', accessToken: 'mc-token-alice' },
   bob: { id: crypto.randomUUID().replace(/-/g, ''), name: 'BobPhone', accessToken: 'mc-token-bob' },
+  carol: { id: crypto.randomUUID().replace(/-/g, ''), name: 'CarolNew', accessToken: 'mc-token-carol' },
+}
+
+/** Chromium for the page checks: `playwright` if it can be found (or PLAYWRIGHT_MODULE points at it). */
+let chromium
+try {
+  ;({ chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright'))
+} catch {
+  chromium = undefined
 }
 const dashed = (id) => id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5')
 
@@ -87,12 +99,6 @@ function waitFor(pred, ms = 5000, what = 'condition') {
   })
 }
 
-/** A tiny valid PNG (1x1), to send as a chat photo. */
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64',
-)
-
 /* ------------------------------------------------------------------ the stack */
 
 let mojang
@@ -101,6 +107,7 @@ let apiBase
 let enderphoneApi
 let realtimeMod
 let bob // { token, uuid, ws, events }
+let signInAs // (who) => { token, uuid }, the phone's sign-in by hand
 const store = { settings: {}, session: undefined }
 
 before(async () => {
@@ -154,15 +161,18 @@ before(async () => {
   realtimeMod = await import('../../src/main/enderchat.js')
 
   // Bob signs in the way the phone does, by hand.
-  const { serverId } = await (await fetch(`${apiBase}/v1/auth/start`, { method: 'POST' })).json()
-  await fetch(`${mojangUrl}/session/minecraft/join`, {
-    method: 'POST',
-    body: JSON.stringify({ accessToken: accounts.bob.accessToken, selectedProfile: accounts.bob.id, serverId }),
-  })
-  const verified = await (
-    await fetch(`${apiBase}/v1/auth/verify`, { method: 'POST', body: JSON.stringify({ username: accounts.bob.name, serverId }) })
-  ).json()
-  bob = { token: verified.token, uuid: verified.profile.uuid, events: [] }
+  signInAs = async (who) => {
+    const { serverId } = await (await fetch(`${apiBase}/v1/auth/start`, { method: 'POST' })).json()
+    await fetch(`${mojangUrl}/session/minecraft/join`, {
+      method: 'POST',
+      body: JSON.stringify({ accessToken: accounts[who].accessToken, selectedProfile: accounts[who].id, serverId }),
+    })
+    const verified = await (
+      await fetch(`${apiBase}/v1/auth/verify`, { method: 'POST', body: JSON.stringify({ username: accounts[who].name, serverId }) })
+    ).json()
+    return { token: verified.token, uuid: verified.profile.uuid }
+  }
+  bob = { ...(await signInAs('bob')), events: [] }
   bob.ws = new WebSocket(`${apiBase.replace('http', 'ws')}/v1/ws`, { headers: { authorization: `Bearer ${bob.token}` } })
   bob.ws.on('message', (d, bin) => !bin && bob.events.push(JSON.parse(d.toString())))
   await new Promise((r, j) => {
@@ -226,60 +236,56 @@ describe('EnderChat against a real API', { skip: skip && 'set ENDERPHONE_API_DIR
     assert.equal(dm.lastBody, 'hi from in-game')
   })
 
-  it('a reply from the launcher arrives live on the phone, and read clears unread', async () => {
-    const { conversations } = await enderphoneApi.api.conversations()
-    const dm = conversations.find((c) => c.kind === 'dm')
-    const sent = await enderphoneApi.api.send(dm.id, 'hey from E-Launcher')
-    assert.equal(sent.body, 'hey from E-Launcher')
-    await waitFor(() => bob.events.some((e) => e.type === 'message' && e.message.body === 'hey from E-Launcher'), 5000, 'Bob to get it')
-    await enderphoneApi.api.markRead(dm.id)
-    const after = (await enderphoneApi.api.conversations()).conversations.find((c) => c.id === dm.id)
-    assert.equal(after.unread, 0)
-    const { messages } = await enderphoneApi.api.messages(dm.id)
-    assert.deepEqual(messages.map((m) => m.body), ['hi from in-game', 'hey from E-Launcher'])
-  })
+  /* ---------------------------------------------------------- the EnderChat page, as the tab loads it */
 
-  it('sends a photo, kept out of the public feed', async () => {
-    const photo = await enderphoneApi.api.uploadChatPhoto(PNG)
-    assert.equal(photo.public, false)
-    const { conversations } = await enderphoneApi.api.conversations()
-    const dm = conversations.find((c) => c.kind === 'dm')
-    const sent = await enderphoneApi.api.send(dm.id, '', photo.id)
-    assert.ok(sent.photoUrl?.endsWith('.png'))
-    await waitFor(() => bob.events.some((e) => e.type === 'message' && e.message.photoId === photo.id), 5000, 'the photo message')
-  })
+  describe('the EnderChat page', { skip: !chromium && 'no Chromium (set CHROMIUM_PATH / install playwright)' }, () => {
+    let browser
+    let page
+    before(async () => {
+      browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {})
+      page = await browser.newPage()
+    })
+    after(() => browser?.close())
 
-  it('makes a group; Bob hears about it and can talk in it', async () => {
-    const group = await enderphoneApi.api.createGroup('Base builders', [accounts.bob.name])
-    assert.equal(group.kind, 'group')
-    assert.deepEqual(group.members.map((m) => m.name).sort(), [accounts.alice.name, accounts.bob.name].sort())
-    await waitFor(() => bob.events.some((e) => e.type === 'conversation' && e.conversation.id === group.id), 5000, 'the group event')
+    const head = () => page.locator('.chat-head h1').first().textContent({ timeout: 5000 })
 
-    await bobCall(`/v1/conversations/${group.id}/messages`, { method: 'POST', body: JSON.stringify({ body: 'on my way' }) })
-    await waitFor(() => aliceEvents.some((e) => e.type === 'message' && e.message.conversationId === group.id), 5000, 'the group message')
+    it('opens signed in, straight to the chat asked for (c=)', async () => {
+      const { conversations } = await enderphoneApi.api.conversations()
+      const dm = conversations.find((c) => c.kind === 'dm')
+      const url = (await enderphoneApi.appPageUrl('enderchat')) + `&c=${dm.id}`
+      await page.goto(url)
+      assert.equal(await head(), accounts.bob.name)
+      assert.equal(new URL(page.url()).hash, '', 'the token is wiped from the address bar')
+    })
 
-    await enderphoneApi.api.rename(group.id, 'Sky base')
-    const renamed = (await enderphoneApi.api.conversations()).conversations.find((c) => c.id === group.id)
-    assert.equal(renamed.name, 'Sky base')
+    it('switches chat when the launcher sets the hash, without reloading', async () => {
+      await page.evaluate(() => (window.__sameDocument = true))
+      const cloud = (await enderphoneApi.api.conversations()).conversations.find((c) => c.system)
+      await page.evaluate((id) => (location.hash = `c=${id}`), cloud.id)
+      await waitFor(async () => (await page.locator('.chat-head .topic').first().textContent()).includes(cloud.name), 5000, 'EnderCloud to open')
+      assert.equal(await page.evaluate(() => window.__sameDocument), true, 'same page, not reloaded')
+    })
 
-    await enderphoneApi.api.removeMember(group.id, bob.uuid)
-    const smaller = (await enderphoneApi.api.conversations()).conversations.find((c) => c.id === group.id)
-    assert.deepEqual(smaller.members.map((m) => m.uuid), [aliceUuid])
+    it('dm= opens your DM with a friend', async () => {
+      await page.evaluate((uuid) => (location.hash = `dm=${uuid}`), bob.uuid)
+      await waitFor(async () => (await head()) === accounts.bob.name, 5000, 'the DM with Bob')
+    })
 
-    await enderphoneApi.api.addMember(group.id, accounts.bob.name)
-    await enderphoneApi.api.leave(group.id)
-    const gone = (await enderphoneApi.api.conversations()).conversations.find((c) => c.id === group.id)
-    assert.equal(gone, undefined, 'left the group')
-  })
+    it('dm= with someone new starts the DM, like New message does', async () => {
+      const carol = await signInAs('carol')
+      await page.evaluate((uuid) => (location.hash = `dm=${uuid}`), carol.uuid)
+      await waitFor(async () => (await head()) === accounts.carol.name, 8000, 'the new DM with Carol')
+      const theirs = await (await fetch(`${apiBase}/v1/conversations`, { headers: { authorization: `Bearer ${carol.token}` } })).json()
+      assert.ok(theirs.conversations.some((c) => c.kind === 'dm' && c.lastBody === '👋'), 'Carol got the wave')
+    })
 
-  it('reports and blocks - and a blocked player can no longer message you', async () => {
-    const r = await enderphoneApi.api.report(bob.uuid, 'spam')
-    assert.equal(r.reported, true)
-    await enderphoneApi.api.block(bob.uuid)
-    await assert.rejects(
-      bobCall(`/v1/messages/${aliceUuid}`, { method: 'POST', body: JSON.stringify({ body: 'still there?' }) }),
-      /403/,
-    )
+    it('recovers from an expired session when handed a fresh token', async () => {
+      await page.goto(`${apiBase}/app/enderchat#t=not-a-real-token`)
+      await waitFor(async () => (await page.locator('.nothing h2').first().textContent().catch(() => '')).includes('expired'), 5000, 'the expired notice')
+      const t = /[#&]t=([^&]+)/.exec(await enderphoneApi.appPageUrl('enderchat'))[1]
+      await page.evaluate((tok) => (location.hash = `t=${tok}`), t)
+      await waitFor(async () => (await page.locator('.chat-head h1').count()) > 0, 8000, 'the page to come back')
+    })
   })
 
   it('stops cleanly', async () => {

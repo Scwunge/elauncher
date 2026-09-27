@@ -373,24 +373,12 @@ export interface ChatMessage {
   createdAt: number
 }
 
-/** Where a message goes: a conversation, or someone you don't have a DM with yet. */
-export type ChatTarget = { conversationId: number } | { uuid: string; name?: string }
-
 export type ChatEvent =
   | { type: 'message'; message: ChatMessage }
   | { type: 'conversation'; conversation: Conversation }
   | { type: string; [key: string]: unknown }
 
 export type RealtimeState = 'off' | 'connecting' | 'live' | 'retrying' | 'signed-out'
-
-export interface Screenshot {
-  path: string
-  name: string
-  instance: string
-  takenAt: number
-  size: number
-  thumb: string
-}
 
 /* ------------------------------------------------------------------------------ the bridge */
 
@@ -460,19 +448,6 @@ export interface LauncherApi {
     live: (on: boolean) => Promise<RealtimeState>
     state: () => Promise<RealtimeState>
     conversations: () => Promise<Result<Conversation[]>>
-    messages: (id: number) => Promise<Result<ChatMessage[]>>
-    send: (target: ChatTarget, body: string) => Promise<Result<ChatMessage>>
-    sendImage: (target: ChatTarget, base64Png: string, caption?: string) => Promise<Result<ChatMessage>>
-    sendScreenshot: (target: ChatTarget, path: string, caption?: string) => Promise<Result<ChatMessage>>
-    screenshots: () => Promise<Result<Screenshot[]>>
-    markRead: (id: number) => Promise<Result<unknown>>
-    createGroup: (name: string, members: string[]) => Promise<Result<Conversation>>
-    addMember: (id: number, username: string) => Promise<Result<{ uuid: string; name: string }>>
-    removeMember: (id: number, uuid: string) => Promise<Result<unknown>>
-    rename: (id: number, name: string) => Promise<Result<{ id: number; name: string }>>
-    leave: (id: number) => Promise<Result<unknown>>
-    block: (uuid: string) => Promise<Result<unknown>>
-    report: (uuid: string, reason: 'spam' | 'harassment' | 'inappropriate' | 'other') => Promise<Result<unknown>>
     onEvent: (cb: (event: ChatEvent) => void) => () => void
     onState: (cb: (state: RealtimeState) => void) => () => void
     onOpen: (cb: (req: { conversationId: number }) => void) => () => void

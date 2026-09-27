@@ -192,27 +192,7 @@ export const api = {
   setCape: (bytes) =>
     authed('/v1/cape', { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: bytes }),
   clearCape: () => authed('/v1/cape', { method: 'DELETE' }),
-  block: (uuid) => post('/v1/blocks', { uuid }),
-  report: (uuid, reason) => post('/v1/reports', { playerUuid: uuid, reason }),
 
-  /* EnderChat - the same conversations the phone's Messages app and the EnderChat page use. */
+  /* EnderChat: the conversation list, for the unread badge and naming notifications. */
   conversations: () => authed('/v1/conversations'),
-  messages: (id, limit = 100) => authed(`/v1/conversations/${Number(id)}/messages?limit=${Number(limit)}`),
-  send: (id, body, photoId) => post(`/v1/conversations/${Number(id)}/messages`, { body, ...(photoId ? { photoId } : {}) }),
-  /** First message to someone you have no DM with yet - the API makes the DM as it delivers it. */
-  sendDirect: (uuid, body, photoId) => post(`/v1/messages/${encodeURIComponent(uuid)}`, { body, ...(photoId ? { photoId } : {}) }),
-  markRead: (id) => authed(`/v1/conversations/${Number(id)}/read`, { method: 'POST' }),
-  createGroup: (name, members) => post('/v1/conversations', { name, members }),
-  addMember: (id, username) => post(`/v1/conversations/${Number(id)}/members`, { username }),
-  removeMember: (id, uuid) =>
-    authed(`/v1/conversations/${Number(id)}/members/${encodeURIComponent(uuid)}`, { method: 'DELETE' }),
-  rename: (id, name) => post(`/v1/conversations/${Number(id)}/name`, { name }),
-  leave: (id) => authed(`/v1/conversations/${Number(id)}/leave`, { method: 'POST' }),
-  /** A PNG kept out of the public feed (share=false) - how a photo in a chat stays in that chat. */
-  uploadChatPhoto: (png) =>
-    authed('/v1/photos?share=false', { method: 'POST', headers: { 'content-type': 'image/png' }, body: png, timeoutMs: 60_000 }),
-}
-
-function post(path, body) {
-  return authed(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
 }

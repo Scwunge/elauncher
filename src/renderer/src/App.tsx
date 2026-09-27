@@ -7,7 +7,7 @@ import HomeTab from './components/HomeTab'
 import LibraryTab from './components/LibraryTab'
 import ServersTab from './components/ServersTab'
 import EnderNetTab from './components/EnderNetTab'
-import ChatTab from './components/ChatTab'
+import EnderChatTab from './components/EnderChatTab'
 import { ChatProvider, useChat } from './chat-state'
 import DiscoverTab from './components/DiscoverTab'
 import WardrobeTab from './components/WardrobeTab'
@@ -96,10 +96,16 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
     setEndernetPage(page)
     setTab('endernet')
   }
-  function messagePlayer(uuid: string, name: string) {
-    chat.openDirect(uuid, name)
+  function messagePlayer(uuid: string) {
+    chat.openDirect(uuid)
     setTab('chat')
   }
+
+  // The EnderChat page stays loaded once opened, so coming back to it is instant and keeps your place.
+  const [chatMounted, setChatMounted] = useState(false)
+  useEffect(() => {
+    if (tab === 'chat') setChatMounted(true)
+  }, [tab])
 
   // A notification clicked while on another page brings you to that chat.
   useEffect(() => window.api.chat.onOpen(() => setTab('chat')), [])
@@ -120,13 +126,18 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
         onOpenConsole={() => setConsoleOpen(true)}
         onSignOut={onSignOut}
         notificationCount={endernet.unreadNotifications}
-        chatUnread={chat.totalUnread}
+        chatUnread={tab === 'chat' ? 0 : chat.totalUnread}
       />
 
       <div className="app-main">
         <TitleBar tab={tab} />
 
         <div className={`content content-${tab}`}>
+          {chatMounted && (
+            <div className="chat-mount" hidden={tab !== 'chat'}>
+              <EnderChatTab active={tab === 'chat'} />
+            </div>
+          )}
           {tab === 'home' ? (
             <HomeTab
               profile={profile}
@@ -136,8 +147,6 @@ function SignedIn({ profile, onProfileChange, onSignOut }: SignedInProps) {
             />
           ) : tab === 'library' ? (
             <LibraryTab openId={openInstanceId} onOpenId={setOpenInstanceId} />
-          ) : tab === 'chat' ? (
-            <ChatTab />
           ) : tab === 'servers' ? (
             <ServersTab onOpenPage={openPage} />
           ) : tab === 'endernet' ? (

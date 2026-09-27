@@ -67,24 +67,11 @@ const api = {
     clearCape: () => invoke("endernet:clearCape"),
     pageUrl: (page) => invoke("endernet:pageUrl", page)
   },
-  /** EnderChat: the phone's conversations (DMs, groups, EnderCloud), live. */
+  /** EnderChat around the page: the live socket, the conversation list, notification clicks. */
   chat: {
     live: (on) => invoke("chat:live", on),
     state: () => invoke("chat:state"),
     conversations: () => invoke("chat:conversations"),
-    messages: (id) => invoke("chat:messages", id),
-    send: (target, body) => invoke("chat:send", target, body),
-    sendImage: (target, base64, caption) => invoke("chat:sendImage", target, base64, caption),
-    sendScreenshot: (target, file, caption) => invoke("chat:sendScreenshot", target, file, caption),
-    screenshots: () => invoke("chat:screenshots"),
-    markRead: (id) => invoke("chat:markRead", id),
-    createGroup: (name, members) => invoke("chat:createGroup", name, members),
-    addMember: (id, username) => invoke("chat:addMember", id, username),
-    removeMember: (id, uuid) => invoke("chat:removeMember", id, uuid),
-    rename: (id, name) => invoke("chat:rename", id, name),
-    leave: (id) => invoke("chat:leave", id),
-    block: (uuid) => invoke("chat:block", uuid),
-    report: (uuid, reason) => invoke("chat:report", uuid, reason),
     onEvent: listen("chat:event"),
     onState: listen("chat:state"),
     onOpen: listen("chat:open")

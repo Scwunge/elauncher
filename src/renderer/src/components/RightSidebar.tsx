@@ -8,7 +8,7 @@ import SkinFace from './SkinFace'
 interface Props {
   profile: Profile
   onOpenChat: () => void
-  onMessage: (uuid: string, name: string) => void
+  onMessage: (uuid: string) => void
 }
 
 const REGION_NAMES: Record<string, string> = { uk: 'London', fr: 'Roubaix', na: 'Canada' }
@@ -99,7 +99,7 @@ export default function RightSidebar({ profile, onOpenChat, onMessage }: Props) 
                     className={`friend-row clickable${f.online ? ' online' : ''}`}
                     key={f.uuid}
                     title={`Message ${f.name}`}
-                    onClick={() => onMessage(f.uuid, f.name)}
+                    onClick={() => onMessage(f.uuid)}
                   >
                     <PlayerFace uuid={f.uuid} name={f.name} avatar={f.avatar} online={f.online} />
                     <div className="friend-name">
