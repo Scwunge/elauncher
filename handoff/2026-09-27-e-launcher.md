@@ -260,7 +260,7 @@ workflow builds a new exe release.
   certificate (OV or EV); electron-builder takes it via `CSC_LINK`/`CSC_KEY_PASSWORD` as GitHub
   secrets.
 - **Own repo**: done - `launcher/` moved to `Scwunge/elauncher` and became a submodule
-  like the others. Move the workflow with it.
+  like the others; the Windows build workflow moved with it.
 - **Bundled JRE** (`resources/jre-win-x64`) for a faster first launch. Optional: Java downloads on
   the first Play anyway.
 - The elytra decision in §5c.
