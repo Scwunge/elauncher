@@ -83,11 +83,26 @@ Set `ENDERPHONE_API_BASE` (see `.env.example`) to point a dev build at a local `
 | `src/renderer/src/components/` | One file per page and dialog |
 | `src/renderer/src/ender.css` | E-Launcher's styles, over the base `index.css` |
 
+## Releasing (auto-update)
+
+Installed copies check `https://enderphone.cloud/launcher/latest.yml` at every launch, download a
+newer version in the background, and install it when the launcher quits. 0.1.1 (2026-09-27) was the
+first release hosted there.
+
+1. Bump `version` in `package.json`. Without a higher version the updater sees nothing new.
+2. Push to `master`. The workflow builds and publishes a GitHub prerelease with
+   `Ender-Launcher-Setup-<version>.exe`, its `.blockmap` and `latest.yml`.
+3. Download those three and check `latest.yml`'s `sha512` matches the installer.
+4. Upload them to `/opt/enderphone-api/site/launcher/` on enderphone-prod (owner `enderphone`, mode
+   644): the installer and blockmap first, **`latest.yml` last**, so no copy is told about an
+   installer that isn't there yet.
+5. `curl https://enderphone.cloud/launcher/latest.yml` shows the new version.
+
+The installer is named without spaces on purpose: `latest.yml` names the exact file, and GitHub
+turns spaces in release file names into dots.
+
 ## Not done yet
 
-- **Auto-update hosting.** `electron-updater` points at `https://enderphone.cloud/launcher`. Nothing
-  is published there yet; each GitHub release carries `latest.yml`, the installer and its blockmap
-  to upload there. Bump `version` for every release, or the updater sees nothing new.
 - **Code signing.** Windows builds are unsigned, so SmartScreen warns on first run.
 - **A bundled JRE** (`resources/jre-win-x64`) for instant first launch. Optional: Java is downloaded
   on the first Play anyway.
