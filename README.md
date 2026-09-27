@@ -86,10 +86,14 @@ Set `ENDERPHONE_API_BASE` (see `.env.example`) to point a dev build at a local `
 ## Not done yet
 
 - **Auto-update hosting.** `electron-updater` points at `https://enderphone.cloud/launcher`. Nothing
-  is published there yet; upload `latest.yml` and the installer from `release/` after a build.
+  is published there yet; each GitHub release carries `latest.yml`, the installer and its blockmap
+  to upload there. Bump `version` for every release, or the updater sees nothing new.
 - **Code signing.** Windows builds are unsigned, so SmartScreen warns on first run.
 - **A bundled JRE** (`resources/jre-win-x64`) for instant first launch. Optional: Java is downloaded
   on the first Play anyway.
 - **Tested outside Electron only.** Typecheck, lint, build and the unit tests pass; EnderChat passes
   end to end against a real local API; every page was screenshotted against a mocked backend. A real Microsoft sign-in, game launch and EnderNet
   handshake still need a run on a desktop.
+
+To wire it all up on a desktop (API deploy, capes, first real run), see
+`handoff/2026-09-27-e-launcher.md` in the umbrella repo.

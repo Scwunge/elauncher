@@ -76,6 +76,9 @@ function createMainWindow() {
   return win;
 }
 electron.app.whenReady().then(() => {
+  // Windows only shows desktop notifications for an app ID that matches the installed shortcut's
+  // (electron-builder gives the NSIS shortcut the appId).
+  if (process.platform === "win32") electron.app.setAppUserModelId("cloud.enderphone.launcher");
   const mainWindow = createMainWindow();
   registerIpcHandlers(mainWindow);
   if (!isDev) initAutoUpdater(mainWindow);
