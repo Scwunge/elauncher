@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import wordmark from '../assets/wordmark.png'
+import logo from '../assets/elauncher-logo.png'
 import Icon from './Icon'
 
 interface Props {
@@ -28,7 +28,7 @@ export default function LoginScreen({ onSignIn }: Props) {
     <div className="login-screen">
       <div className="login-glow" aria-hidden="true" />
       <div className="login-card">
-        <img className="login-wordmark" src={wordmark} alt="EnderPhone" />
+        <img className="login-wordmark" src={logo} alt="E-Launcher" />
         <h1>
           E-Launcher<span className="login-sub"> · Ender Launcher</span>
         </h1>

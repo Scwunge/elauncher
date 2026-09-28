@@ -2668,3 +2668,15 @@ input[type='number'] {
     position: static;
   }
 }
+
+/* Brand pack (2026-09-28): EnderNet's own mark in its nav, and Ender Capes in the Wardrobe. */
+.endernet-nav-mark { width: 22px; height: 22px; flex-shrink: 0; }
+.capes-promo {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 16px; padding: 10px 12px;
+  border-radius: 12px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text);
+  text-align: left; cursor: pointer; font: inherit; transition: border-color .15s, background .15s;
+}
+.capes-promo:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.capes-promo img { width: 40px; height: 40px; flex-shrink: 0; }
+.capes-promo span { flex: 1; min-width: 0; display: grid; }
+.capes-promo small { color: var(--text-dim, #A995C4); font-size: 12px; }

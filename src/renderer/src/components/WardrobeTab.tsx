@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { useEnderNet } from '../state'
 import type { CapeInfo, Profile } from '../types'
+import capesIcon from '../assets/ender-capes-icon.png'
 import Icon from './Icon'
 import SkinEditorPage from './SkinEditorPage'
 import SkinViewer3D from './SkinViewer3D'
@@ -259,6 +260,16 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
               <p>Your own PNG or animated GIF, worn on the cape and the elytra. Other EnderPhone players see it on any server.</p>
             </div>
           </div>
+          {/* A real Minecraft cape (a Mojang one, seen by every player) is a different thing from the
+              EnderPhone cape above - Ender Capes, the cape shop on enderphone.cloud, sells those. */}
+          <button className="capes-promo" onClick={() => void window.api.shell.openExternal('https://enderphone.cloud/shop.html')}>
+            <img src={capesIcon} alt="" />
+            <span>
+              <strong>Want a real Minecraft cape?</strong>
+              <small>Official capes on Ender Capes, delivered as a code in seconds.</small>
+            </span>
+            <Icon name="external" size={16} />
+          </button>
           {!session.connected ? (
             <>
               <p className="field-hint">Capes live on your EnderNet account.</p>

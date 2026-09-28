@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useEnderNet } from '../state'
 import type { SiteEntry } from '../types'
+import endernetIcon from '../assets/endernet-icon.png'
 import Icon from './Icon'
 import { useApiBase } from './ServerBanner'
 
@@ -89,7 +90,7 @@ export default function EnderNetTab({ page, onPageChange }: Props) {
     <div className="endernet">
       <aside className="endernet-nav">
         <div className="endernet-nav-head">
-          <Icon name="phone" size={18} />
+          <img className="endernet-nav-mark" src={endernetIcon} alt="" />
           <span>EnderNet</span>
         </div>
         {CORE_PAGES.map((p) => (
