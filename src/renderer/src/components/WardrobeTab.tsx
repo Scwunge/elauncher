@@ -261,8 +261,8 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
             </div>
           </div>
           {/* A real Minecraft cape (a Mojang one, seen by every player) is a different thing from the
-              EnderPhone cape above - Ender Capes, the cape shop on enderphone.cloud, sells those. */}
-          <button className="capes-promo" onClick={() => void window.api.shell.openExternal('https://enderphone.cloud/shop.html')}>
+              EnderPhone cape above - Ender Capes, the cape shop on ender.bio, sells those. */}
+          <button className="capes-promo" onClick={() => void window.api.shell.openExternal('https://ender.bio/capes/')}>
             <img src={capesIcon} alt="" />
             <span>
               <strong>Want a real Minecraft cape?</strong>
