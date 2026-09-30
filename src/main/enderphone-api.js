@@ -17,6 +17,7 @@
 import { getCachedSession, trySilentSignIn } from './auth.js'
 import { getEnderPhoneSession, setEnderPhoneSession } from './store.js'
 import { downloadCape } from './cape-download.js'
+import { listOfficialCapes } from './official-capes.js'
 
 export const API_BASE = (process.env.ENDERPHONE_API_BASE || 'https://api.enderphone.cloud').replace(/\/+$/, '')
 // Overridable only so the integration tests can stand in for Mojang (the API reads the same name).
@@ -122,6 +123,8 @@ export async function connect(password) {
       expiresAt: Date.now() + TOKEN_TRUST_MS,
     }
     setEnderPhoneSession(session)
+    // ender.bio shows every official cape the account owns; tell EnderNet which (in the background).
+    void reportOwnedCapes(mc.accessToken)
     return { status: 'connected', uuid: session.uuid, name: session.name, kind: session.kind, needs: session.needs }
   } catch (err) {
     return { status: 'error', message: err.name === 'AbortError' ? 'EnderNet did not answer in time.' : err.message }
@@ -157,6 +160,26 @@ export async function authed(path, init = {}) {
     return res.status === 204 ? {} : res.json()
   }
   throw new EnderPhoneAuthError('error', 'EnderNet did not accept the sign-in.')
+}
+
+/**
+ * Tells EnderNet which official Minecraft capes this account owns, so the player's ender.bio page
+ * can show them all (Mojang only makes the equipped one public). Texture ids and names only - the
+ * Minecraft token stays here. `capes` is a list official-capes.js already fetched, else it's asked
+ * for. Best effort: only while connected to EnderNet, and it never throws.
+ */
+export async function reportOwnedCapes(accessToken, capes) {
+  try {
+    if (!sessionSummary().connected) return
+    const list = capes ?? (await listOfficialCapes(accessToken))
+    await authed('/v1/me/mojang-capes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ capes: list.map(({ texture, name, active }) => ({ texture, name, active })) }),
+    })
+  } catch {
+    // Not connected, Mojang or EnderNet unreachable: the next connect or Wardrobe visit tries again.
+  }
 }
 
 /** For an embedded /app/<page>: the page reads the session from the URL fragment (never sent to

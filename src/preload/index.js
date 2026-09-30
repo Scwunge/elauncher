@@ -15,7 +15,11 @@ const api = {
   },
   account: {
     /** `pngBase64` is the raw file bytes, base64-encoded (no `data:` prefix). */
-    changeSkin: (pngBase64, variant) => invoke("account:changeSkin", pngBase64, variant)
+    changeSkin: (pngBase64, variant) => invoke("account:changeSkin", pngBase64, variant),
+    /** The official capes on the Minecraft account; `setCape(null)` wears none. */
+    capes: () => invoke("account:capes"),
+    setCape: (capeId) => invoke("account:setCape", capeId),
+    capeTexture: (texture) => invoke("account:capeTexture", texture)
   },
   settings: {
     get: () => invoke("settings:get"),

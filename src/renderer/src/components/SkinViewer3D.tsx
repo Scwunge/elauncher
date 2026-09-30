@@ -13,6 +13,11 @@ interface Props {
    * through the mod's own fitting (cape-art.ts) - the preview is what other players see in game.
    */
   cape?: string | Blob
+  /**
+   * The cape is already a real cape texture (an official Minecraft cape, from Mojang's CDN), not a
+   * picture: skinview3d wears it as it is, with no fitting.
+   */
+  capeIsTexture?: boolean
   /** Show the cape as an elytra instead. */
   elytra?: boolean
   width?: number
@@ -27,7 +32,7 @@ interface Props {
  * kept across re-renders; only the textures reload when their inputs change, so dragging to rotate
  * isn't reset by anything else on the page.
  */
-export default function SkinViewer3D({ skinUrl, model, cape, elytra, width = 240, height = 300, nameTag, onCapeError }: Props) {
+export default function SkinViewer3D({ skinUrl, model, cape, capeIsTexture, elytra, width = 240, height = 300, nameTag, onCapeError }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const viewerRef = useRef<SkinViewer>()
   const elytraRef = useRef(elytra)
@@ -85,14 +90,40 @@ export default function SkinViewer3D({ skinUrl, model, cape, elytra, width = 240
     }
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
+    const turnRound = () => {
+      // A cape is worn on the back: turn round to show it, then carry on spinning from there.
+      viewer.resetCameraPose()
+      viewer.playerObject.rotation.y = Math.PI
+    }
+    if (capeIsTexture) {
+      const source = typeof cape === 'string' ? fetch(cape).then((r) => r.blob()) : Promise.resolve(cape)
+      source
+        .then((blob) => createImageBitmap(blob))
+        .then((bitmap) => {
+          if (cancelled) return
+          const canvas = document.createElement('canvas')
+          canvas.width = bitmap.width
+          canvas.height = bitmap.height
+          canvas.getContext('2d')?.drawImage(bitmap, 0, 0)
+          onCapeError?.(undefined)
+          viewer.loadCape(canvas, { backEquipment: elytraRef.current ? 'elytra' : 'cape' })
+          turnRound()
+        })
+        .catch((err: Error) => {
+          if (cancelled) return
+          viewer.loadCape(null)
+          onCapeError?.(`Couldn't show that cape (${err.message}).`)
+        })
+      return () => {
+        cancelled = true
+      }
+    }
     loadCapeFrames(cape)
       .then((frames) => {
         if (cancelled || !frames.length) return
         onCapeError?.(undefined)
         viewer.loadCape(frames[0]!.canvas, { backEquipment: elytraRef.current ? 'elytra' : 'cape' })
-        // A cape is worn on the back: turn round to show it, then carry on spinning from there.
-        viewer.resetCameraPose()
-        viewer.playerObject.rotation.y = Math.PI
+        turnRound()
         if (frames.length < 2) return
         // Later frames are drawn into the texture the first one created, rather than a new
         // texture per frame.
@@ -122,7 +153,7 @@ export default function SkinViewer3D({ skinUrl, model, cape, elytra, width = 240
     }
     // onCapeError is a callback prop; the cape itself is what reloads this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cape])
+  }, [cape, capeIsTexture])
 
   // Cape or elytra: the same texture, worn differently.
   useEffect(() => {

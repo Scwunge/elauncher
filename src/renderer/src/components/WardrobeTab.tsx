@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { useEnderNet } from '../state'
-import type { CapeInfo, Profile } from '../types'
+import type { CapeInfo, OfficialCape, Profile } from '../types'
 import capesIcon from '../assets/ender-capes-icon.png'
 import Icon from './Icon'
 import SkinEditorPage from './SkinEditorPage'
@@ -9,6 +9,30 @@ import SkinViewer3D from './SkinViewer3D'
 interface Props {
   profile: Profile
   onSkinUploaded: (skinUrl: string, skinModel: 'classic' | 'slim') => void
+}
+
+/** An official cape's front face, cut from its texture the way the game does (64x32 layout, face at 1,1, 10x16). */
+function CapeThumb({ texture }: { texture?: Blob }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas || !texture) return
+    let cancelled = false
+    void createImageBitmap(texture).then((img) => {
+      if (cancelled) return
+      const k = img.width / 64
+      canvas.width = 10 * k
+      canvas.height = 16 * k
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(img, k, k, 10 * k, 16 * k, 0, 0, 10 * k, 16 * k)
+    }).catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [texture])
+  return <canvas ref={ref} width={10} height={16} />
 }
 
 function readAsDataUrl(file: File): Promise<string> {
@@ -49,6 +73,48 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
   const [showCape, setShowCape] = useState(true)
   const [elytra, setElytra] = useState(false)
   const capeInput = useRef<HTMLInputElement>(null)
+
+  // The official Minecraft capes on the account. `picked` is the one being previewed on the model:
+  // a texture id, null for "no cape", or undefined when nothing is picked (then the model shows the
+  // EnderPhone cape if there is one, else the cape the account wears).
+  const [official, setOfficial] = useState<OfficialCape[]>()
+  const [officialError, setOfficialError] = useState<string>()
+  const [officialBusy, setOfficialBusy] = useState(false)
+  const [officialMsg, setOfficialMsg] = useState<{ text: string; bad?: boolean }>()
+  const [picked, setPicked] = useState<string | null>()
+  const [textures, setTextures] = useState<Record<string, Blob>>({})
+
+  useEffect(() => {
+    void window.api.account.capes().then((r) => {
+      if (r.ok) setOfficial(r.data)
+      else setOfficialError(r.error)
+    })
+  }, [])
+
+  // Each owned cape's texture, fetched once (by the main process - see official-capes.js).
+  useEffect(() => {
+    for (const c of official ?? []) {
+      if (textures[c.texture]) continue
+      void window.api.account.capeTexture(c.texture).then((r) => {
+        if (!r.ok) return
+        const bytes = Uint8Array.from(atob(r.data.base64), (ch) => ch.charCodeAt(0))
+        setTextures((t) => ({ ...t, [c.texture]: new Blob([bytes], { type: r.data.type }) }))
+      })
+    }
+    // Only a new list asks again; textures already fetched are kept.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [official])
+
+  async function wearOfficial(cape: OfficialCape | null) {
+    setOfficialBusy(true)
+    setOfficialMsg(undefined)
+    const r = await window.api.account.setCape(cape ? cape.id : null)
+    setOfficialBusy(false)
+    if (r.ok) {
+      setOfficial(r.data)
+      setOfficialMsg({ text: cape ? `You're wearing the ${cape.name} cape. Everyone sees it in game.` : 'No cape on your account now.' })
+    } else setOfficialMsg({ text: r.error, bad: true })
+  }
 
   async function loadCape() {
     const r = await window.api.endernet.cape()
@@ -114,6 +180,7 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
     setCapePreview(file)
     setCapeBase64(dataUrl.split(',')[1])
     setShowCape(true)
+    setPicked(undefined)
   }
 
   async function uploadCape() {
@@ -161,7 +228,16 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
     )
   }
 
-  const shownCape = showCape ? capePreview ?? capeSaved ?? undefined : undefined
+  // What the model wears: a picked official cape (or "no cape"); otherwise the EnderPhone cape being
+  // previewed or saved; otherwise the official cape the account wears.
+  const wornOfficial = official?.find((c) => c.active)?.texture
+  const officialShown = picked !== undefined ? picked : !capePreview && !capeSaved ? wornOfficial ?? null : null
+  const shownCape = !showCape || picked === null
+    ? undefined
+    : officialShown
+      ? textures[officialShown]
+      : capePreview ?? capeSaved ?? undefined
+  const pickedCape = picked ? official?.find((c) => c.texture === picked) : undefined
 
   return (
     <div className="wardrobe">
@@ -171,6 +247,7 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
           skinUrl={skinPreview ?? profile.skinUrl}
           model={variant}
           cape={shownCape}
+          capeIsTexture={!!officialShown}
           elytra={elytra}
           onCapeError={setCapeShowError}
           width={320}
@@ -250,6 +327,62 @@ export default function WardrobeTab({ profile, onSkinUploaded }: Props) {
               </>
             )}
           </div>
+        </section>
+
+        <section className="wardrobe-card">
+          <div className="wardrobe-card-head">
+            <Icon name="cape" size={20} />
+            <div>
+              <h3>Minecraft capes</h3>
+              <p>The official capes on your Microsoft account. The one you wear shows in game for everyone, on every server. Pick one to try it on.</p>
+            </div>
+          </div>
+          {officialError ? (
+            <p className="error-text">{officialError}</p>
+          ) : !official ? (
+            <p className="field-hint">Loading your capes…</p>
+          ) : official.length === 0 ? (
+            <p className="field-hint">This account has no official capes yet. Real ones come from Minecraft events, or as codes on Ender Capes.</p>
+          ) : (
+            <>
+              <div className="official-capes">
+                <button className={`official-cape${picked === null ? ' selected' : ''}`} onClick={() => setPicked(null)} title="Wear no cape">
+                  <span className="official-cape-none"><Icon name="x" size={14} /></span>
+                  <span>No cape</span>
+                  {!official.some((c) => c.active) && <i className="wearing" title="What you wear now" />}
+                </button>
+                {official.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`official-cape${officialShown === c.texture ? ' selected' : ''}`}
+                    onClick={() => {
+                      setPicked(c.texture)
+                      setShowCape(true)
+                    }}
+                    title={c.name}
+                  >
+                    <CapeThumb texture={textures[c.texture]} />
+                    <span>{c.name}</span>
+                    {c.active && <i className="wearing" title="What you wear now" />}
+                  </button>
+                ))}
+              </div>
+              {officialMsg && <p className={officialMsg.bad ? 'error-text' : 'good-text'}>{officialMsg.text}</p>}
+              <div className="settings-actions">
+                {picked === null && official.some((c) => c.active) && (
+                  <button className="primary-button" disabled={officialBusy} onClick={() => void wearOfficial(null)}>
+                    {officialBusy ? 'Saving…' : 'Wear no cape'}
+                  </button>
+                )}
+                {pickedCape && !pickedCape.active && (
+                  <button className="primary-button" disabled={officialBusy} onClick={() => void wearOfficial(pickedCape)}>
+                    {officialBusy ? 'Saving…' : `Wear ${pickedCape.name}`}
+                  </button>
+                )}
+                {pickedCape?.active && <p className="field-hint">You're wearing this one.</p>}
+              </div>
+            </>
+          )}
         </section>
 
         <section className="wardrobe-card">

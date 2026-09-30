@@ -2680,3 +2680,17 @@ input[type='number'] {
 .capes-promo img { width: 40px; height: 40px; flex-shrink: 0; }
 .capes-promo span { flex: 1; min-width: 0; display: grid; }
 .capes-promo small { color: var(--text-dim, #A995C4); font-size: 12px; }
+
+/* Official Minecraft capes on the account (WardrobeTab, official-capes.js). */
+.official-capes { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.official-cape {
+  display: grid; justify-items: center; gap: 6px; padding: 10px 6px 8px; position: relative;
+  border-radius: 12px; border: 1px solid var(--panel-border); background: var(--panel); color: var(--text);
+  cursor: pointer; font: inherit; font-size: 11.5px; text-align: center; transition: border-color .15s, background .15s;
+}
+.official-cape:hover { border-color: var(--accent); }
+.official-cape.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.official-cape canvas, .official-cape .official-cape-none { width: 30px; height: 48px; image-rendering: pixelated; border-radius: 3px; }
+.official-cape .official-cape-none { display: grid; place-items: center; border: 1px dashed var(--panel-border); color: var(--text-dim, #A995C4); }
+.official-cape span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.official-cape .wearing { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #5AD6A4; }

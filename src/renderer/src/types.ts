@@ -319,6 +319,17 @@ export interface EndportalList {
   total: number
 }
 
+/** An official Minecraft cape the account owns (Mojang's profile API). */
+export interface OfficialCape {
+  /** Mojang's id for it on this account, what switching capes sends back. */
+  id: string
+  name: string
+  /** The texture's id on textures.minecraft.net. */
+  texture: string
+  /** The one worn in game. */
+  active: boolean
+}
+
 export interface CapeInfo {
   cape: string | null
   canCustomise: boolean
@@ -393,6 +404,10 @@ export interface LauncherApi {
       pngBase64: string,
       variant: 'classic' | 'slim',
     ) => Promise<{ ok: true; skinUrl: string; model: 'classic' | 'slim' } | { ok: false; error: string }>
+    capes: () => Promise<Result<OfficialCape[]>>
+    /** `null` wears no cape. Resolves to the list as Mojang now has it. */
+    setCape: (capeId: string | null) => Promise<Result<OfficialCape[]>>
+    capeTexture: (texture: string) => Promise<Result<{ base64: string; type: string }>>
   }
   settings: {
     get: () => Promise<Settings>

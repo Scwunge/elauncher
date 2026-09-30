@@ -5,13 +5,14 @@ import path from 'node:path'
 import { getCachedSession, signIn, signOut, trySilentSignIn, updateCachedSkinUrl } from './auth.js'
 import { registerChatHandlers, stopChat } from './chat-ipc.js'
 import { appendConsoleChunk, getConsoleBuffer, getConsoleInstanceRoot, reportLatestCrash, resetConsole } from './console-log.js'
-import { API_BASE, api, appPageUrl, connect as connectEnderNet, disconnect as disconnectEnderNet, sessionSummary } from './enderphone-api.js'
+import { API_BASE, api, appPageUrl, connect as connectEnderNet, disconnect as disconnectEnderNet, reportOwnedCapes, sessionSummary } from './enderphone-api.js'
 import * as enderphone from './enderphone-mod.js'
 import { downloadTemurinJre, ensureJava, listJavaCandidates } from './java.js'
 import { ensureMinecraftInstalled, launchGame } from './minecraft.js'
 import { createModpack, deleteModpack, deleteWorld, instanceDir, listInstalledContent, listWorlds, readLatestLog, removeInstalledContent, toggleInstalledContent, updateModpack } from './modpacks.js'
 import { installLatestModrinthProject, installModrinthContent, installModrinthModpack, listModrinthVersions, searchModrinth } from './modrinth.js'
 import { fetchActiveSkinUrl, uploadSkin } from './skins.js'
+import { downloadCapeTexture, listOfficialCapes, setActiveCape } from './official-capes.js'
 import { addCustomModpack, clearJavaOverride, createGroup, deleteGroup, getAllInstanceEnderPhone, getCustomModpack, getCustomModpacks, getGroupAssignments, getGroups, getInstanceEnderPhone, getJavaOverride, getLastPlayed, getLaunchOverride, getSettings, recordLastPlayed, renameGroup, setInstanceEnderPhone, setJavaOverride, setLaunchOverride, setModpackGroup, updateCustomModpack, updateSettings } from './store.js'
 import { checkForUpdatesManually, quitAndInstallUpdate } from './updater.js'
 
@@ -92,6 +93,27 @@ export function registerIpcHandlers(mainWindow) {
       return { ok: false, error: err.message ?? String(err) };
     }
   });
+
+  // The official Minecraft capes on the account (official-capes.js): list, wear one or none, and
+  // each one's texture for the 3D preview. Every list read is also reported to EnderNet for ender.bio.
+  const mcSession = async () => {
+    const session = getCachedSession() ?? await trySilentSignIn();
+    if (!session) throw new Error("Sign in first.");
+    return session;
+  };
+  handle("account:capes", async () => {
+    const { accessToken } = await mcSession();
+    const capes = await listOfficialCapes(accessToken);
+    void reportOwnedCapes(accessToken, capes);
+    return capes;
+  });
+  handle("account:setCape", async (_e, capeId) => {
+    const { accessToken } = await mcSession();
+    const capes = await setActiveCape(accessToken, capeId ?? null);
+    void reportOwnedCapes(accessToken, capes);
+    return capes;
+  });
+  handle("account:capeTexture", (_e, texture) => downloadCapeTexture(texture));
 
   /* ---------------------------------------------------------------- settings */
 
