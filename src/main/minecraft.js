@@ -110,7 +110,12 @@ export async function ensureMinecraftInstalled(manifest, instanceRoot, getJavaPa
   } else if (manifest.loader === "fabric") {
     onProgress({ phase: "installing-loader", message: `Installing Fabric ${loaderVersion}...` });
     const loader = await installer.getFabricLoaderArtifact(manifest.minecraftVersion, loaderVersion);
-    finalVersionId = await withRetries(() => installer.installFabric(loader, instanceRoot), {
+    // @xmcl/installer defaults the Fabric version's parent to `loader.intermediary.version`,
+    // which is the real Minecraft version for the old "1.x" scheme but is just the literal string
+    // "0.0.0" from Fabric's own API for the newer date-based versions (26.x) - it never installed
+    // anything under that id, so the game would inherit from a version json that doesn't exist.
+    // Pin it to the real version explicitly instead of trusting that derivation.
+    finalVersionId = await withRetries(() => installer.installFabric(loader, instanceRoot, { inheritsFrom: manifest.minecraftVersion }), {
       attempts: 3,
       onRetry: (_err, attempt, attempts) => onProgress({
         phase: "installing-loader",
